@@ -1,0 +1,23 @@
+# Core Python packages
+numpy
+pandas
+tqdm
+scikit-learn
+pygame
+
+# Deep Learning
+torch
+torchvision
+torchaudio
+
+# MIDI handling
+pretty_midi
+mido
+
+# Audio conversion + playback (optional but useful)
+midi2audio
+pydub
+simpleaudio
+
+
+#"brew install fluidsynth "
