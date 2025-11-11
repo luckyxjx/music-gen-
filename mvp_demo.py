@@ -19,12 +19,12 @@ from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 import torch.nn.functional as F
 
-from play_midi import play_midi  # 🔊 playback util
+from play_midi import play_midi 
 
-# -----------------------------
+ 
 # CONFIG
-# -----------------------------
-DATASET_PATH = "./EMOPIA_1.0"   # <-- set to your local EMOPIA path
+ 
+DATASET_PATH = "./EMOPIA_1.0" 
 LABELS_CSV = "label.csv"
 NUM_FILES = 200
 MAX_EVENTS = 200
@@ -48,9 +48,8 @@ MAX_SHIFT_STEPS = 32
 # Velocity buckets
 VEL_BUCKETS = [0, 40, 80, 128]
 
-# -----------------------------
+ 
 # TOKENIZER
-# -----------------------------
 class SimpleREMITokenizer:
     def __init__(self, max_shift=MAX_SHIFT_STEPS, vel_buckets=VEL_BUCKETS):
         self.max_shift = max_shift
@@ -125,9 +124,8 @@ class SimpleREMITokenizer:
                 notes.append((cur_time, p, cur_vel))
         return notes
 
-# -----------------------------
+
 # MIDI helpers
-# -----------------------------
 def extract_monophonic_notes(midi_path, max_notes=MAX_EVENTS):
     try:
         pm = pretty_midi.PrettyMIDI(midi_path)
@@ -151,9 +149,8 @@ def notes_to_midi(notes, out_path, instrument_program=0, note_duration=0.5):
     pm.instruments.append(instr)
     pm.write(out_path)
 
-# -----------------------------
+ 
 # Dataset building
-# -----------------------------
 def build_dataset(emopia_dir, labels_csv, tokenizer, num_files=NUM_FILES):
     labels_path = Path(emopia_dir) / labels_csv
     df = pd.read_csv(labels_path).sample(frac=1, random_state=SEED).reset_index(drop=True)
@@ -174,9 +171,8 @@ def build_dataset(emopia_dir, labels_csv, tokenizer, num_files=NUM_FILES):
         file_paths.append(str(midi_path))
     return X_tokens, y_labels, file_paths
 
-# -----------------------------
+ 
 # Collate helpers
-# -----------------------------
 def pad_sequences(seqs, maxlen, pad_value=0):
     padded = np.full((len(seqs), maxlen), pad_value, dtype=np.int64)
     for i, s in enumerate(seqs):
@@ -192,9 +188,8 @@ class TokenSeqDataset(Dataset):
     def __getitem__(self, idx):
         return torch.LongTensor(self.x[idx]), torch.LongTensor([self.y[idx]]).squeeze()
 
-# -----------------------------
+ 
 # Models
-# -----------------------------
 class LSTMClassifier(nn.Module):
     def __init__(self, vocab_size, emb_dim=128, hidden_dim=256, num_classes=4):
         super().__init__()
@@ -220,9 +215,8 @@ class LSTMGenerator(nn.Module):
         out, _ = self.lstm(emb)
         return self.fc(out)
 
-# -----------------------------
+ 
 # Generator training prep
-# -----------------------------
 def make_generator_pairs(token_seqs, window=SEQ_LEN):
     X_in, y_out = [], []
     for seq in token_seqs:
@@ -241,9 +235,8 @@ class GenDataset(Dataset):
     def __getitem__(self, idx):
         return torch.LongTensor(self.X[idx]), torch.LongTensor([self.y[idx]]).squeeze()
 
-# -----------------------------
+ 
 # Training helpers
-# -----------------------------
 def train_classifier(model, dataloader, device, epochs=CLF_EPOCHS, lr=1e-3):
     model.to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=lr)
@@ -278,9 +271,8 @@ def train_generator(model, dataloader, device, epochs=GEN_EPOCHS, lr=1e-3):
             total_loss += loss.item()
         print(f"[Generator] Epoch {ep+1}/{epochs} loss={total_loss/len(dataloader):.4f}")
 
-# -----------------------------
+ 
 # Sampling
-# -----------------------------
 def top_k_logits(logits, k):
     values, _ = torch.topk(logits, k)
     min_values = values[:, -1].unsqueeze(1)
@@ -301,9 +293,8 @@ def sample_from_model(model, seed_tokens, length=128, temperature=1.0, top_k=10,
         seq.append(int(next_id))
     return seq
 
-# -----------------------------
+ 
 # Main
-# -----------------------------
 def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Device:", device)

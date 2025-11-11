@@ -1,0 +1,135 @@
+# Example configuration for using multiple emotion-labeled MIDI datasets
+
+data:
+  # Primary EMOPIA dataset
+  dataset_path: "./EMOPIA_1.0"
+  
+  # Additional datasets
+  # Can be simple paths (auto-detect format) or dicts with type specification
+  additional_datasets:
+    # Example 1: Simple path - auto-detects format
+    - "./my_custom_dataset"
+    
+    # Example 2: Specify dataset type explicitly
+    - path: "./lakh_midi_emotions"
+      type: "lakh"
+    
+    - path: "./maestro_emotions"
+      type: "maestro"
+    
+    # Example 3: Generic JSON format
+    - path: "./additional_midi_collection"
+      type: "json"
+  
+  # Emotion categories (6 core emotions)
+  emotion_categories:
+    - "joy"
+    - "sadness"
+    - "anger"
+    - "calm"
+    - "surprise"
+    - "fear"
+  
+  # Dataset splits
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+  seed: 42
+  
+  # Class balancing
+  balance_emotions: true
+  balancing_strategy: "oversample"  # Options: oversample, undersample, hybrid, weighted
+  use_stratified_split: true
+  save_split_indices: true
+  split_indices_path: "./data/split_indices.json"
+  
+  # Data augmentation
+  pitch_shift_range: 5  # ±5 semitones
+  tempo_variation: 0.1  # ±10%
+  apply_augmentation: true
+  
+  # Normalization
+  normalize_tempo: true
+  normalize_key: true
+  normalize_time_signature: true
+  target_bpm: 120
+
+tokenizer:
+  max_shift_steps: 32
+  velocity_buckets: [0, 40, 80, 128]
+  max_events: 512
+  quantization: "16th"
+  
+  # Multi-instrument support
+  instruments: ["melody", "harmony", "drums"]
+  instrument_programs:
+    melody: 0
+    harmony: 0
+    drums: 128
+
+model:
+  model_type: "transformer"
+  d_model: 512
+  n_layers: 6
+  n_heads: 8
+  d_ff: 2048
+  dropout: 0.1
+  max_seq_len: 2048
+  
+  # Emotion conditioning
+  emotion_emb_dim: 64
+  num_emotions: 6
+  use_emotion_conditioning: true
+  
+  # Duration control
+  use_duration_control: true
+  duration_emb_dim: 32
+
+training:
+  batch_size: 32
+  learning_rate: 0.0001
+  weight_decay: 0.01
+  num_epochs: 50
+  gradient_clip: 1.0
+  
+  # Learning rate scheduling
+  use_lr_scheduler: true
+  scheduler_type: "cosine"
+  warmup_epochs: 5
+  
+  # Checkpointing
+  checkpoint_dir: "./checkpoints"
+  save_every_n_epochs: 5
+  keep_best_n: 3
+  
+  # Logging
+  log_dir: "./logs"
+  use_wandb: false
+  log_every_n_steps: 100
+  
+  # Validation
+  validate_every_n_epochs: 1
+  generate_samples_during_val: true
+  num_val_samples: 4
+
+generation:
+  temperature: 1.0
+  top_k: 10
+  top_p: 0.9
+  repetition_penalty: 1.2
+  
+  # Duration control
+  default_duration_minutes: 2.0
+  min_duration_minutes: 0.5
+  max_duration_minutes: 5.0
+  
+  # Output
+  output_dir: "./generated"
+  export_formats: ["midi", "wav", "mp3"]
+  
+  # Audio synthesis
+  sample_rate: 44100
+  mp3_bitrate: "192k"
+
+# Device configuration
+device: "auto"  # auto, cuda, mps, cpu
