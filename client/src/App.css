@@ -1,0 +1,374 @@
+.landing-page {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background-color: #242121;
+  overflow: hidden;
+  font-family: 'Jura', sans-serif;
+}
+
+.nav {
+  position: absolute;
+  top: 40px;
+  right: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  z-index: 10;
+}
+
+.nav-link {
+  color: #FFFFFF;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  transition: opacity 0.3s ease;
+}
+
+.nav-link:hover {
+  opacity: 0.7;
+}
+
+.sphere-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  z-index: 2;
+  margin-top: 200px;
+}
+
+.tagline {
+  color: #FFFFFF;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 0;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.cta-link {
+  color: white;
+  text-decoration: underline;
+  text-decoration-color: #8A2BE2;
+  text-underline-offset: 4px;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: opacity 0.3s ease;
+}
+
+.cta-link:hover {
+  opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+  .tagline {
+    font-size: 24px;
+    letter-spacing: 1px;
+  }
+  
+  .nav {
+    top: 20px;
+    right: 20px;
+    gap: 15px;
+  }
+  
+  .nav-link {
+    font-size: 12px;
+  }
+  
+  .content {
+    margin-top: 150px;
+    gap: 20px;
+  }
+}
+
+/* Chat Page Styles */
+.chat-page {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background-color: #242121;
+  font-family: 'Jura', sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-logo {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+  z-index: 10;
+}
+
+.chat-sphere-canvas {
+  width: 120px;
+  height: 120px;
+  display: block;
+}
+
+.chat-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: 0 40px;
+  gap: 100px;
+}
+
+.chat-title {
+  color: #FFFFFF;
+  font-size: 42px;
+  font-weight: 400;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 0;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.chat-input-container {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 800px;
+  background-color: #2a2525;
+  border-radius: 12px;
+  padding: 4px;
+  gap: 8px;
+}
+
+.chat-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #FFFFFF;
+  font-family: 'Jura', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 16px 20px;
+}
+
+.chat-input::placeholder {
+  color: #888888;
+  font-family: 'Jura', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.chat-submit-btn {
+  background-color: #2a2525;
+  border: none;
+  border-radius: 8px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  flex-shrink: 0;
+}
+
+.chat-submit-btn:hover {
+  background-color: #333030;
+}
+
+.chat-submit-btn:active {
+  background-color: #1f1c1c;
+}
+
+@media (max-width: 768px) {
+  .chat-logo {
+    top: 20px;
+    left: 20px;
+  }
+  
+  .chat-sphere-canvas {
+    width: 100px;
+    height: 100px;
+  }
+  
+  .chat-content {
+    gap: 60px;
+    padding: 0 20px;
+  }
+  
+  .chat-title {
+    font-size: 28px;
+    letter-spacing: 2px;
+  }
+  
+  .chat-input {
+    font-size: 12px;
+    padding: 14px 16px;
+  }
+  
+  .chat-input::placeholder {
+    font-size: 12px;
+  }
+  
+  .chat-submit-btn {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Loading Spinner */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #FFFFFF;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error Message */
+.error-message {
+  background-color: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  color: #ff3b30;
+  padding: 16px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  text-align: center;
+  max-width: 800px;
+  width: 100%;
+}
+
+/* Result Container */
+.result-container {
+  background-color: #2a2525;
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 800px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.result-title {
+  color: #FFFFFF;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 0;
+  text-align: center;
+}
+
+.result-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.result-details p {
+  color: #CCCCCC;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.result-details strong {
+  color: #FFFFFF;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-right: 8px;
+}
+
+.download-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-family: 'Jura', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 16px 32px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.download-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+}
+
+.download-btn:active {
+  transform: translateY(0);
+}
+
+.chat-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.chat-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .result-container {
+    padding: 24px;
+  }
+  
+  .result-title {
+    font-size: 20px;
+  }
+  
+  .result-details p {
+    font-size: 12px;
+  }
+  
+  .download-btn {
+    font-size: 12px;
+    padding: 14px 28px;
+  }
+}

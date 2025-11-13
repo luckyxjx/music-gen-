@@ -10,6 +10,7 @@ from pathlib import Path
 from src.config import ModelConfig, TokenizerConfig, GenerationConfig
 from src.model import create_model
 from src.tokenizer import MIDITokenizer
+from src.generation.text_parser import parse_text_input
 
 
 class MusicGenerator:
@@ -212,10 +213,199 @@ def generate_with_untrained_model():
     return output_dir
 
 
+def generate_with_emotion_transition():
+    """Generate music with emotion transition"""
+    print("\n" + "="*60)
+    print("EMOTION TRANSITION GENERATION")
+    print("="*60)
+    
+    # Create tokenizer and model
+    tokenizer_config = TokenizerConfig()
+    tokenizer = MIDITokenizer(tokenizer_config)
+    
+    model_config = ModelConfig(
+        model_type="transformer",
+        d_model=256,
+        n_layers=4,
+        n_heads=4,
+        use_emotion_conditioning=True,
+        use_duration_control=True
+    )
+    
+    model = create_model(model_config, tokenizer.vocab_size)
+    device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+    
+    generator = MusicGenerator(
+        model=model,
+        tokenizer=tokenizer,
+        config=GenerationConfig(),
+        device=device
+    )
+    
+    print("\n✓ Model ready for emotion transitions")
+    print(f"✓ Device: {device}")
+    
+    # Emotion transitions
+    transitions = [
+        ("joy", "calm", "Happy to Calm"),
+        ("sadness", "joy", "Sad to Happy"),
+        ("anger", "calm", "Angry to Calm")
+    ]
+    
+    output_dir = Path("./generated_transitions")
+    output_dir.mkdir(exist_ok=True)
+    
+    emotions_map = {"joy": 0, "sadness": 1, "anger": 2, "calm": 3, "surprise": 4, "fear": 5}
+    
+    for start_emotion, end_emotion, description in transitions:
+        print(f"\n{'='*60}")
+        print(f"Transition: {description}")
+        print(f"{'='*60}")
+        
+        start_idx = emotions_map[start_emotion]
+        end_idx = emotions_map[end_emotion]
+        
+        # Generate with interpolation (simulate by generating segments)
+        all_tokens = [tokenizer.vocab['<BOS>']]
+        
+        # Generate 3 segments with interpolated emotions
+        for i, alpha in enumerate([0.0, 0.5, 1.0]):
+            print(f"\n  Segment {i+1}/3 (alpha={alpha:.1f})...")
+            
+            # Simple interpolation: alternate between emotions
+            if alpha < 0.33:
+                emotion = start_idx
+            elif alpha < 0.67:
+                emotion = (start_idx + end_idx) // 2 if start_idx != end_idx else start_idx
+            else:
+                emotion = end_idx
+            
+            tokens = generator.generate(
+                emotion=emotion,
+                duration_minutes=0.5,
+                temperature=1.0,
+                top_k=20,
+                max_tokens=100
+            )
+            
+            # Append tokens (skip BOS after first segment)
+            if i > 0 and tokens[0] == tokenizer.vocab['<BOS>']:
+                tokens = tokens[1:]
+            all_tokens.extend(tokens)
+        
+        # Save
+        output_path = output_dir / f"transition_{start_emotion}_to_{end_emotion}.mid"
+        generator.save_midi(all_tokens, output_path)
+    
+    print(f"\n" + "="*60)
+    print("EMOTION TRANSITION GENERATION COMPLETE!")
+    print("="*60)
+    print(f"\n✓ Generated {len(transitions)} transition files in: {output_dir}")
+    
+    return output_dir
+
+
+def generate_from_text():
+    """Generate music from text input"""
+    print("\n" + "="*60)
+    print("TEXT-TO-MUSIC GENERATION")
+    print("="*60)
+    
+    # Create tokenizer and model
+    tokenizer_config = TokenizerConfig()
+    tokenizer = MIDITokenizer(tokenizer_config)
+    
+    model_config = ModelConfig(
+        model_type="transformer",
+        d_model=256,
+        n_layers=4,
+        n_heads=4,
+        use_emotion_conditioning=True,
+        use_duration_control=True
+    )
+    
+    model = create_model(model_config, tokenizer.vocab_size)
+    device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+    
+    generator = MusicGenerator(
+        model=model,
+        tokenizer=tokenizer,
+        config=GenerationConfig(),
+        device=device
+    )
+    
+    print("\n✓ Model ready")
+    print(f"✓ Device: {device}")
+    
+    # Example text inputs
+    examples = [
+        "I'm happy, give me an upbeat 2-minute track",
+        "I feel sad, make me a calm piano piece for 1 minute",
+        "I'm angry, create an intense 30 second track",
+        "Give me a peaceful and relaxing 3-minute song"
+    ]
+    
+    print("\n" + "="*60)
+    print("EXAMPLE TEXT INPUTS")
+    print("="*60)
+    
+    output_dir = Path("./generated_from_text")
+    output_dir.mkdir(exist_ok=True)
+    
+    for i, text in enumerate(examples, 1):
+        print(f"\n{'='*60}")
+        print(f"Example {i}: \"{text}\"")
+        print(f"{'='*60}")
+        
+        # Parse text
+        parsed = parse_text_input(text)
+        print(f"\nParsed:")
+        print(f"  Emotion: {parsed['emotion']}")
+        print(f"  Duration: {parsed['duration_minutes']} minutes")
+        
+        # Generate
+        tokens = generator.generate(
+            emotion=parsed['emotion_index'],
+            duration_minutes=parsed['duration_minutes'],
+            temperature=1.0,
+            top_k=20,
+            max_tokens=256
+        )
+        
+        # Save
+        output_path = output_dir / f"example_{i}_{parsed['emotion']}.mid"
+        generator.save_midi(tokens, output_path)
+    
+    print(f"\n" + "="*60)
+    print("TEXT-TO-MUSIC GENERATION COMPLETE!")
+    print("="*60)
+    print(f"\n✓ Generated {len(examples)} MIDI files in: {output_dir}")
+    
+    return output_dir
+
+
 def main():
     """Main function"""
+    print("\n" + "="*60)
+    print("MUSIC GENERATION OPTIONS")
+    print("="*60)
+    print("\n1. Generate from text input")
+    print("2. Generate for all emotions")
+    print("3. Generate with emotion transitions ")
+    print("4. Exit")
+    
+    choice = input("\nChoose option [1-4]: ").strip()
+    
     try:
-        output_dir = generate_with_untrained_model()
+        if choice == "1":
+            output_dir = generate_from_text()
+        elif choice == "2":
+            output_dir = generate_with_untrained_model()
+        elif choice == "3":
+            output_dir = generate_with_emotion_transition()
+        else:
+            print("\nExiting...")
+            return
         
         print(f"\n✓ Success! Check the '{output_dir}' folder for MIDI files.")
         
