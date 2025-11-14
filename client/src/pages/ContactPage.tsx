@@ -53,21 +53,21 @@ function ContactPage() {
             
             <div className="info-cards">
               <div className="info-card">
-                <div className="info-icon">📧</div>
+                <div className="info-icon">@</div>
                 <h3 className="info-title">Email</h3>
                 <p className="info-text">ayush.bhattarai@example.com</p>
                 <p className="info-text">lucky@example.com</p>
               </div>
 
               <div className="info-card">
-                <div className="info-icon">🏫</div>
+                <div className="info-icon">■</div>
                 <h3 className="info-title">Institution</h3>
                 <p className="info-text">Jaypee Institute of Information Technology</p>
                 <p className="info-text">Sector 62, Noida</p>
               </div>
 
               <div className="info-card">
-                <div className="info-icon">💼</div>
+                <div className="info-icon">◆</div>
                 <h3 className="info-title">Project</h3>
                 <p className="info-text">Ongoing Beats</p>
                 <p className="info-text">AI Music Generation Platform</p>

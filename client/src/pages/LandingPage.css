@@ -130,6 +130,33 @@
   width: 100%;
 }
 
+.nav-right {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.dashboard-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 10px 28px;
+  border-radius: 25px;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'K2D', sans-serif;
+}
+
+.dashboard-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.6);
+  color: #FFFFFF;
+  transform: translateY(-2px);
+}
+
 .join-btn {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.4);

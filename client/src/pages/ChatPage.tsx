@@ -1,8 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './ChatPage.css'
 
-// API configuration
 const API_BASE_URL = 'http://localhost:5001'
 
 interface GenerationResult {
@@ -14,96 +13,100 @@ interface GenerationResult {
   tokens_generated: number
 }
 
-interface MusicCategory {
+interface ChatSession {
   id: string
-  name: string
-  emotion: string
-  description: string
-  icon: string
+  title: string
+  messages: Array<{type: 'user' | 'bot', message: string, result?: GenerationResult}>
+  timestamp: string
 }
-
-const musicCategories: MusicCategory[] = [
-  { id: 'happy', name: 'Happy & Upbeat', emotion: 'joy', description: 'Energetic and joyful vibes', icon: '😊' },
-  { id: 'sad', name: 'Sad & Melancholic', emotion: 'sadness', description: 'Emotional and thoughtful', icon: '😢' },
-  { id: 'calm', name: 'Calm & Peaceful', emotion: 'calm', description: 'Relaxing and serene', icon: '😌' },
-  { id: 'energetic', name: 'Energetic & Intense', emotion: 'anger', description: 'Powerful and aggressive', icon: '⚡' },
-  { id: 'mysterious', name: 'Mysterious & Dark', emotion: 'fear', description: 'Tense and atmospheric', icon: '🌙' },
-  { id: 'surprise', name: 'Surprising & Varied', emotion: 'surprise', description: 'Unexpected and dynamic', icon: '✨' },
-]
 
 function ChatPage() {
   const navigate = useNavigate()
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [duration, setDuration] = useState(2)
+  const [sessions, setSessions] = useState<ChatSession[]>([])
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
   const [inputText, setInputText] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
-  const [generationResult, setGenerationResult] = useState<GenerationResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [chatHistory, setChatHistory] = useState<Array<{type: 'user' | 'bot', message: string}>>([
-    { type: 'bot', message: 'Hello! I can help you create music. Describe what you want to hear, or choose a category from the left.' }
-  ])
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 
-  const handleCategoryGenerate = async () => {
-    if (!selectedCategory) {
-      setError('Please select a category')
-      return
-    }
-
-    const category = musicCategories.find(c => c.id === selectedCategory)
-    if (!category) return
-
-    setIsGenerating(true)
-    setError(null)
-    setGenerationResult(null)
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/generate-emotion`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          emotion: category.emotion,
-          duration: duration,
-          temperature: 1.0,
-          top_k: 20
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to generate music')
+  useEffect(() => {
+    // Load sessions from localStorage
+    const savedSessions = localStorage.getItem('chatSessions')
+    if (savedSessions) {
+      const parsed = JSON.parse(savedSessions)
+      setSessions(parsed)
+      if (parsed.length > 0) {
+        setCurrentSessionId(parsed[0].id)
       }
+    } else {
+      // Create first session
+      createNewSession()
+    }
+  }, [])
 
-      const data: GenerationResult = await response.json()
-      setGenerationResult(data)
-      setChatHistory(prev => [...prev, 
-        { type: 'bot', message: `✓ Generated ${category.name} music (${duration} minutes)` }
-      ])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setIsGenerating(false)
+  const createNewSession = () => {
+    const newSession: ChatSession = {
+      id: Date.now().toString(),
+      title: 'New Chat',
+      messages: [],
+      timestamp: new Date().toISOString()
+    }
+    const updatedSessions = [newSession, ...sessions]
+    setSessions(updatedSessions)
+    setCurrentSessionId(newSession.id)
+    localStorage.setItem('chatSessions', JSON.stringify(updatedSessions))
+  }
+
+  const deleteSession = (sessionId: string) => {
+    const updatedSessions = sessions.filter(s => s.id !== sessionId)
+    setSessions(updatedSessions)
+    localStorage.setItem('chatSessions', JSON.stringify(updatedSessions))
+    
+    if (currentSessionId === sessionId) {
+      if (updatedSessions.length > 0) {
+        setCurrentSessionId(updatedSessions[0].id)
+      } else {
+        createNewSession()
+      }
     }
   }
 
-  const handleChatGenerate = async () => {
-    if (!inputText.trim()) {
-      setError('Please enter a description')
-      return
-    }
+  const updateSessionTitle = (sessionId: string, firstMessage: string) => {
+    const title = firstMessage.slice(0, 30) + (firstMessage.length > 30 ? '...' : '')
+    const updatedSessions = sessions.map(s => 
+      s.id === sessionId ? { ...s, title } : s
+    )
+    setSessions(updatedSessions)
+    localStorage.setItem('chatSessions', JSON.stringify(updatedSessions))
+  }
+
+  const handleGenerate = async () => {
+    if (!inputText.trim() || !currentSessionId) return
 
     const userInput = inputText
-    
+    const currentSession = sessions.find(s => s.id === currentSessionId)
+    if (!currentSession) return
+
+    // Update title if this is the first user message
+    const userMessages = currentSession.messages.filter(m => m.type === 'user')
+    if (userMessages.length === 0) {
+      updateSessionTitle(currentSessionId, userInput)
+    }
+
     // Add user message
-    setChatHistory(prev => [...prev, { type: 'user', message: userInput }])
+    const updatedMessages = [
+      ...currentSession.messages,
+      { type: 'user' as const, message: userInput },
+      { type: 'bot' as const, message: '♪ Generating music...' }
+    ]
+    
+    const updatedSessions = sessions.map(s =>
+      s.id === currentSessionId ? { ...s, messages: updatedMessages } : s
+    )
+    setSessions(updatedSessions)
     setInputText('')
-    
-    // Add "Generating music..." message immediately
-    setChatHistory(prev => [...prev, { type: 'bot', message: '🎵 Generating music...' }])
-    
     setIsGenerating(true)
     setError(null)
-    setGenerationResult(null)
 
     try {
       const response = await fetch(`${API_BASE_URL}/api/generate`, {
@@ -123,123 +126,219 @@ function ChatPage() {
       }
 
       const data: GenerationResult = await response.json()
-      setGenerationResult(data)
       
-      // Replace "Generating..." with success message
-      setChatHistory(prev => {
-        const newHistory = [...prev]
-        newHistory[newHistory.length - 1] = { 
-          type: 'bot', 
-          message: `✓ Music generated successfully! Emotion: ${data.emotion}, Duration: ${data.duration} minutes` 
+      // Save to generation history
+      const historyItem = {
+        id: data.generation_id,
+        emotion: data.emotion,
+        duration: data.duration,
+        timestamp: new Date().toISOString(),
+        midiFile: `${API_BASE_URL}${data.midi_file}`
+      }
+      
+      const existingHistory = localStorage.getItem('generationHistory')
+      const history = existingHistory ? JSON.parse(existingHistory) : []
+      history.unshift(historyItem)
+      localStorage.setItem('generationHistory', JSON.stringify(history))
+      
+      // Update session with result
+      const finalMessages = [
+        ...currentSession.messages,
+        { type: 'user' as const, message: userInput },
+        { 
+          type: 'bot' as const, 
+          message: `✓ Music generated! Emotion: ${data.emotion}, Duration: ${data.duration} minutes`,
+          result: data
         }
-        return newHistory
-      })
+      ]
+      
+      const finalSessions = sessions.map(s =>
+        s.id === currentSessionId ? { ...s, messages: finalMessages } : s
+      )
+      setSessions(finalSessions)
+      localStorage.setItem('chatSessions', JSON.stringify(finalSessions))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
       
-      // Replace "Generating..." with error message
-      setChatHistory(prev => {
-        const newHistory = [...prev]
-        newHistory[newHistory.length - 1] = { 
-          type: 'bot', 
-          message: '✗ Failed to generate music. Please try again.' 
-        }
-        return newHistory
-      })
+      // Update with error message
+      const errorMessages = [
+        ...currentSession.messages.slice(0, -1),
+        { type: 'bot' as const, message: '✗ Failed to generate music. Please try again.' }
+      ]
+      
+      const errorSessions = sessions.map(s =>
+        s.id === currentSessionId ? { ...s, messages: errorMessages } : s
+      )
+      setSessions(errorSessions)
+      localStorage.setItem('chatSessions', JSON.stringify(errorSessions))
     } finally {
       setIsGenerating(false)
     }
   }
 
-  const handleDownload = () => {
-    if (generationResult) {
-      window.open(`${API_BASE_URL}${generationResult.midi_file}`, '_blank')
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !isGenerating) {
+      handleGenerate()
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !isGenerating) {
-      handleChatGenerate()
-    }
+  const handleDownload = (midiFile: string) => {
+    window.open(`${API_BASE_URL}${midiFile}`, '_blank')
   }
+
+  const handleLogout = () => {
+    localStorage.removeItem('user')
+    navigate('/')
+  }
+
+  const currentSession = sessions.find(s => s.id === currentSessionId)
 
   return (
     <div className="chat-page">
-      <button className="back-btn" onClick={() => navigate('/')}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-        Back
-      </button>
-
-      <div className="chat-container">
-        {/* Left Panel - Categories */}
-        <div className="left-panel">
-          <h2 className="panel-title">QUICK GENERATE</h2>
-          <p className="panel-subtitle">Choose a mood and duration</p>
-
-          <div className="categories-list">
-            {musicCategories.map((category) => (
-              <button
-                key={category.id}
-                className={`category-card ${selectedCategory === category.id ? 'selected' : ''}`}
-                onClick={() => setSelectedCategory(category.id)}
-              >
-                <span className="category-icon">{category.icon}</span>
-                <div className="category-info">
-                  <h3 className="category-name">{category.name}</h3>
-                  <p className="category-description">{category.description}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <div className="duration-control">
-            <label className="duration-label">Duration: {duration} minutes</label>
-            <input
-              type="range"
-              min="1"
-              max="5"
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              className="duration-slider"
-            />
-          </div>
-
-          <button
-            className="generate-btn"
-            onClick={handleCategoryGenerate}
-            disabled={!selectedCategory || isGenerating}
-          >
-            {isGenerating ? 'GENERATING...' : 'GENERATE MUSIC'}
+      {/* Sidebar */}
+      <div className={`chat-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
+        <div className="sidebar-header">
+          <h2 className="sidebar-title">ONGOING BEATS</h2>
+          <button className="new-chat-btn" onClick={createNewSession}>
+            + New Chat
           </button>
         </div>
 
-        {/* Right Panel - Chat */}
-        <div className="right-panel">
-          <h2 className="panel-title">AI CHAT</h2>
-          <p className="panel-subtitle">Describe your perfect soundtrack</p>
-
-          <div className="chat-messages">
-            {chatHistory.map((msg, index) => (
-              <div key={index} className={`message ${msg.type}`}>
-                <div className="message-content">{msg.message}</div>
-              </div>
-            ))}
-            {isGenerating && (
-              <div className="message bot">
-                <div className="message-content typing">
-                  <span></span><span></span><span></span>
+        <div className="sessions-list">
+          {sessions.map((session) => (
+            <div
+              key={session.id}
+              className={`session-item ${currentSessionId === session.id ? 'active' : ''}`}
+              onClick={() => setCurrentSessionId(session.id)}
+            >
+              <div className="session-content">
+                <div className="session-title">{session.title}</div>
+                <div className="session-time">
+                  {new Date(session.timestamp).toLocaleDateString()}
                 </div>
               </div>
-            )}
-          </div>
+              <button
+                className="delete-session-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  deleteSession(session.id)
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
 
+        <div className="sidebar-footer">
+          <button className="sidebar-action-btn" onClick={() => navigate('/dashboard')}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="white"/>
+            </svg>
+            Dashboard
+          </button>
+          <button className="sidebar-action-btn logout" onClick={handleLogout}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Logout
+          </button>
+        </div>
+      </div>
+
+      {/* Sidebar Toggle Button */}
+      <button 
+        className="sidebar-toggle-btn" 
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {isSidebarOpen ? (
+            <path d="M15 18l-6-6 6-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          ) : (
+            <path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          )}
+        </svg>
+      </button>
+
+      {/* Main Chat Area */}
+      <div className="chat-main">
+        <div className="chat-messages">
+          {currentSession?.messages.length === 0 ? (
+            <div className="welcome-screen">
+              <div className="welcome-content">
+                <h1 className="welcome-title">ONGOING BEATS</h1>
+                <p className="welcome-subtitle">AI-Powered Music Generation</p>
+                
+                <div className="welcome-examples">
+                  <h2 className="examples-title">Try asking for:</h2>
+                  <div className="example-cards">
+                    <div className="example-card" onClick={() => setInputText('Create happy upbeat music for 2 minutes')}>
+                      <div className="example-icon">♪</div>
+                      <p className="example-text">"Create happy upbeat music for 2 minutes"</p>
+                    </div>
+                    <div className="example-card" onClick={() => setInputText('Play me some calm peaceful music for 3 minutes')}>
+                      <div className="example-icon">~</div>
+                      <p className="example-text">"Play me some calm peaceful music for 3 minutes"</p>
+                    </div>
+                    <div className="example-card" onClick={() => setInputText('Generate intense energetic music for 1 minute')}>
+                      <div className="example-icon">⚡</div>
+                      <p className="example-text">"Generate intense energetic music for 1 minute"</p>
+                    </div>
+                    <div className="example-card" onClick={() => setInputText('Make mysterious dark music for 4 minutes')}>
+                      <div className="example-icon">◐</div>
+                      <p className="example-text">"Make mysterious dark music for 4 minutes"</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="welcome-features">
+                  <div className="feature-badge">
+                    <span className="badge-icon">∞</span>
+                    <span className="badge-text">Unlimited Generations</span>
+                  </div>
+                  <div className="feature-badge">
+                    <span className="badge-icon">◆</span>
+                    <span className="badge-text">6 Emotions</span>
+                  </div>
+                  <div className="feature-badge">
+                    <span className="badge-icon">↓</span>
+                    <span className="badge-text">MIDI Export</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            currentSession?.messages.map((msg, index) => (
+              <div key={index} className={`message ${msg.type}`}>
+                <div className="message-content">
+                  {msg.message}
+                  {msg.result && (
+                    <div className="message-result">
+                      <div className="result-info">
+                        <span>ID: {msg.result.generation_id.slice(0, 8)}</span>
+                        <span>Tokens: {msg.result.tokens_generated}</span>
+                      </div>
+                      <button 
+                        className="download-btn-inline" 
+                        onClick={() => handleDownload(msg.result!.midi_file)}
+                      >
+                        Download MIDI
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="chat-input-container">
+          {error && <div className="error-message">{error}</div>}
           <div className="chat-input-area">
             <input
               type="text"
               className="chat-input"
-              placeholder="E.g., Play me some funky music, I'm feeling good..."
+              placeholder="Describe your music... (e.g., 'Play me happy upbeat music for 2 minutes')"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -247,32 +346,12 @@ function ChatPage() {
             />
             <button
               className="send-btn"
-              onClick={handleChatGenerate}
+              onClick={handleGenerate}
               disabled={isGenerating || !inputText.trim()}
             >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 10H16M16 10L11 5M16 10L11 15" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              {isGenerating ? '...' : '→'}
             </button>
           </div>
-
-          {error && (
-            <div className="error-message">{error}</div>
-          )}
-
-          {generationResult && (
-            <div className="result-panel">
-              <h3 className="result-title">✓ Music Generated!</h3>
-              <div className="result-info">
-                <span>Emotion: {generationResult.emotion}</span>
-                <span>Duration: {generationResult.duration}min</span>
-                <span>Tokens: {generationResult.tokens_generated}</span>
-              </div>
-              <button className="download-btn" onClick={handleDownload}>
-                DOWNLOAD MIDI
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

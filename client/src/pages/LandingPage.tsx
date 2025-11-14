@@ -69,7 +69,7 @@ function LandingPage() {
             <a href="#" className="nav-link" onClick={(e) => { e.preventDefault(); navigate('/about'); }}>About us</a>
             <a href="#" className="nav-link" onClick={(e) => { e.preventDefault(); navigate('/contact'); }}>Contact</a>
           </div>
-          <button className="join-btn" onClick={() => navigate('/chat')}>join now</button>
+          <button className="join-btn" onClick={() => navigate('/auth')}>join now</button>
         </nav>
         
         <div 
@@ -84,7 +84,7 @@ function LandingPage() {
             <br/>
             <span className="title-regular">BEATS</span>
           </h1>
-          <button className="get-started-btn" onClick={() => navigate('/chat')}>Get Started</button>
+          <button className="get-started-btn" onClick={() => navigate('/auth')}>Get Started</button>
         </div>
       </section>
 
@@ -172,7 +172,7 @@ function LandingPage() {
 
           <div className="cta-section">
             <p className="cta-text">Ready to create your perfect soundtrack?</p>
-            <button className="cta-button" onClick={() => navigate('/chat')}>
+            <button className="cta-button" onClick={() => navigate('/auth')}>
               START CREATING NOW
             </button>
           </div>
@@ -239,7 +239,7 @@ function LandingPage() {
             <p className="final-cta-text">
               Join thousands of creators making music with AI. Start your journey today.
             </p>
-            <button className="final-cta-button" onClick={() => navigate('/chat')}>
+            <button className="final-cta-button" onClick={() => navigate('/auth')}>
               GET STARTED FOR FREE
             </button>
           </div>

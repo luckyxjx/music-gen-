@@ -26,7 +26,7 @@ function AboutPage() {
           
           <div className="team-grid">
             <div className="team-card">
-              <div className="team-icon">🎵</div>
+              <div className="team-icon">♪</div>
               <h3 className="team-name">Lucky</h3>
               <p className="team-role">AI Model Architect</p>
               <div className="team-description">
@@ -45,7 +45,7 @@ function AboutPage() {
             </div>
 
             <div className="team-card">
-              <div className="team-icon">💻</div>
+              <div className="team-icon">{ }</div>
               <h3 className="team-name">Ayush Bhattarai</h3>
               <p className="team-role">Full Stack Developer</p>
               <div className="team-description">
