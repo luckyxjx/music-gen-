@@ -8,6 +8,7 @@ interface GenerationResult {
   success: boolean
   generation_id: string
   midi_file: string
+  audio_file?: string
   emotion: string
   duration: number
   tokens_generated: number
@@ -28,6 +29,8 @@ function ChatPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     // Load sessions from localStorage
@@ -182,8 +185,37 @@ function ChatPage() {
     }
   }
 
-  const handleDownload = (midiFile: string) => {
+  const handlePlayPause = (audioFile?: string) => {
+    if (!audioFile) return
+
+    if (audioElement) {
+      if (isPlaying) {
+        audioElement.pause()
+        setIsPlaying(false)
+      } else {
+        audioElement.play()
+        setIsPlaying(true)
+      }
+    } else {
+      // Create new audio element
+      const audio = new Audio(`${API_BASE_URL}${audioFile}`)
+      audio.addEventListener('ended', () => setIsPlaying(false))
+      audio.addEventListener('error', () => {
+        setError('Failed to load audio file')
+        setIsPlaying(false)
+      })
+      audio.play()
+      setAudioElement(audio)
+      setIsPlaying(true)
+    }
+  }
+
+  const handleDownloadMidi = (midiFile: string) => {
     window.open(`${API_BASE_URL}${midiFile}`, '_blank')
+  }
+
+  const handleDownloadAudio = (audioFile: string) => {
+    window.open(`${API_BASE_URL}${audioFile}`, '_blank')
   }
 
   const handleLogout = () => {
@@ -318,12 +350,41 @@ function ChatPage() {
                         <span>ID: {msg.result.generation_id.slice(0, 8)}</span>
                         <span>Tokens: {msg.result.tokens_generated}</span>
                       </div>
-                      <button 
-                        className="download-btn-inline" 
-                        onClick={() => handleDownload(msg.result!.midi_file)}
-                      >
-                        Download MIDI
-                      </button>
+                      
+                      {msg.result.audio_file && (
+                        <div className="audio-controls">
+                          <button className="play-btn" onClick={() => handlePlayPause(msg.result!.audio_file)}>
+                            {isPlaying ? (
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="6" y="4" width="4" height="16" fill="white" rx="1"/>
+                                <rect x="14" y="4" width="4" height="16" fill="white" rx="1"/>
+                              </svg>
+                            ) : (
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M8 5v14l11-7z" fill="white"/>
+                              </svg>
+                            )}
+                            {isPlaying ? 'PAUSE' : 'PLAY'}
+                          </button>
+                        </div>
+                      )}
+                      
+                      <div className="download-buttons">
+                        <button 
+                          className="download-btn-inline" 
+                          onClick={() => handleDownloadMidi(msg.result!.midi_file)}
+                        >
+                          Download MIDI
+                        </button>
+                        {msg.result.audio_file && (
+                          <button 
+                            className="download-btn-inline secondary" 
+                            onClick={() => handleDownloadAudio(msg.result!.audio_file!)}
+                          >
+                            Download MP3
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

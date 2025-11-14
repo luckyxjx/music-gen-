@@ -112,13 +112,14 @@ class AudioConverter:
             return False
 
 
-def convert_midi_to_audio(midi_path: str, output_format: str = "wav", **kwargs) -> Optional[str]:
+def convert_midi_to_audio(midi_path: str, output_format: str = "wav", soundfont_path: Optional[str] = None, **kwargs) -> Optional[str]:
     """
     Convenience function to convert MIDI to audio
     
     Args:
         midi_path: Path to MIDI file
         output_format: Output format ('wav' or 'mp3')
+        soundfont_path: Path to SoundFont file (optional)
         **kwargs: Additional arguments for conversion
     
     Returns:
@@ -127,7 +128,11 @@ def convert_midi_to_audio(midi_path: str, output_format: str = "wav", **kwargs) 
     midi_path = Path(midi_path)
     output_path = midi_path.with_suffix(f'.{output_format}')
     
-    converter = AudioConverter()
+    # Use default SoundFont if not provided
+    if soundfont_path is None:
+        soundfont_path = "soundfont.sf2"
+    
+    converter = AudioConverter(soundfont_path=soundfont_path)
     
     if output_format == "wav":
         success = converter.midi_to_wav(str(midi_path), str(output_path), **kwargs)

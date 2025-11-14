@@ -14,6 +14,7 @@ from src.config import ModelConfig, TokenizerConfig, GenerationConfig
 from src.model import create_model
 from src.tokenizer import MIDITokenizer
 from src.generation.text_parser import parse_text_input
+from src.generation.audio_converter import AudioConverter
 from generate_music import MusicGenerator
 
 app = Flask(__name__)
@@ -24,6 +25,7 @@ model = None
 tokenizer = None
 generator = None
 device = None
+audio_converter = None
 
 # Output directory
 OUTPUT_DIR = Path("./generated_api")
@@ -32,7 +34,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 def initialize_model():
     """Initialize model on startup"""
-    global model, tokenizer, generator, device
+    global model, tokenizer, generator, device, audio_converter
     
     print("Initializing model...")
     
@@ -61,7 +63,12 @@ def initialize_model():
         device=device
     )
     
+    # Create audio converter
+    soundfont_path = "soundfont.sf2"
+    audio_converter = AudioConverter(soundfont_path=soundfont_path)
+    
     print(f"✓ Model initialized on {device}")
+    print(f"✓ Audio converter initialized with SoundFont: {soundfont_path}")
 
 
 @app.route('/api/health', methods=['GET'])
@@ -83,7 +90,8 @@ def generate_music():
     {
         "text": "I'm happy, give me an upbeat 2-minute track",
         "temperature": 1.0,
-        "top_k": 20
+        "top_k": 20,
+        "use_demo": false
     }
     """
     try:
@@ -91,6 +99,7 @@ def generate_music():
         text = data.get('text', '')
         temperature = data.get('temperature', 1.0)
         top_k = data.get('top_k', 20)
+        use_demo = data.get('use_demo', True)  # Default to demo mode
         
         if not text:
             return jsonify({'error': 'Text input required'}), 400
@@ -101,28 +110,49 @@ def generate_music():
         # Generate unique ID
         generation_id = str(uuid.uuid4())
         
-        # Generate music
-        tokens = generator.generate(
-            emotion=parsed['emotion_index'],
-            duration_minutes=parsed['duration_minutes'],
-            temperature=temperature,
-            top_k=top_k,
-            max_tokens=512
-        )
-        
-        # Save MIDI
         midi_filename = f"{generation_id}.mid"
         midi_path = OUTPUT_DIR / midi_filename
-        generator.save_midi(tokens, str(midi_path))
         
-        return jsonify({
+        if use_demo:
+            # Use demo generation with actual music
+            from create_demo_midi import create_demo_midi
+            duration_seconds = parsed['duration_minutes'] * 60
+            create_demo_midi(parsed['emotion'], duration_seconds, str(midi_path))
+            tokens_generated = 0  # Demo mode doesn't use tokens
+        else:
+            # Generate music using model
+            tokens = generator.generate(
+                emotion=parsed['emotion_index'],
+                duration_minutes=parsed['duration_minutes'],
+                temperature=temperature,
+                top_k=top_k,
+                max_tokens=512
+            )
+            
+            # Save MIDI
+            generator.save_midi(tokens, str(midi_path))
+            tokens_generated = len(tokens)
+        
+        # Convert to MP3
+        mp3_filename = f"{generation_id}.mp3"
+        mp3_path = OUTPUT_DIR / mp3_filename
+        audio_success = audio_converter.midi_to_mp3(str(midi_path), str(mp3_path))
+        
+        response_data = {
             'success': True,
             'generation_id': generation_id,
             'midi_file': f'/api/download/{generation_id}.mid',
             'emotion': parsed['emotion'],
             'duration': parsed['duration_minutes'],
-            'tokens_generated': len(tokens)
-        })
+            'tokens_generated': tokens_generated,
+            'demo_mode': use_demo
+        }
+        
+        # Add audio file if conversion succeeded
+        if audio_success:
+            response_data['audio_file'] = f'/api/download/{generation_id}.mp3'
+        
+        return jsonify(response_data)
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -138,7 +168,8 @@ def generate_by_emotion():
         "emotion": "joy",
         "duration": 2.0,
         "temperature": 1.0,
-        "top_k": 20
+        "top_k": 20,
+        "use_demo": false
     }
     """
     try:
@@ -147,6 +178,7 @@ def generate_by_emotion():
         duration = data.get('duration', 2.0)
         temperature = data.get('temperature', 1.0)
         top_k = data.get('top_k', 20)
+        use_demo = data.get('use_demo', True)  # Default to demo mode
         
         # Map emotion to index
         emotions_map = {
@@ -158,28 +190,49 @@ def generate_by_emotion():
         # Generate unique ID
         generation_id = str(uuid.uuid4())
         
-        # Generate music
-        tokens = generator.generate(
-            emotion=emotion_idx,
-            duration_minutes=duration,
-            temperature=temperature,
-            top_k=top_k,
-            max_tokens=512
-        )
-        
-        # Save MIDI
         midi_filename = f"{generation_id}.mid"
         midi_path = OUTPUT_DIR / midi_filename
-        generator.save_midi(tokens, str(midi_path))
         
-        return jsonify({
+        if use_demo:
+            # Use demo generation with actual music
+            from create_demo_midi import create_demo_midi
+            duration_seconds = duration * 60
+            create_demo_midi(emotion_name, duration_seconds, str(midi_path))
+            tokens_generated = 0  # Demo mode doesn't use tokens
+        else:
+            # Generate music using model
+            tokens = generator.generate(
+                emotion=emotion_idx,
+                duration_minutes=duration,
+                temperature=temperature,
+                top_k=top_k,
+                max_tokens=512
+            )
+            
+            # Save MIDI
+            generator.save_midi(tokens, str(midi_path))
+            tokens_generated = len(tokens)
+        
+        # Convert to MP3
+        mp3_filename = f"{generation_id}.mp3"
+        mp3_path = OUTPUT_DIR / mp3_filename
+        audio_success = audio_converter.midi_to_mp3(str(midi_path), str(mp3_path))
+        
+        response_data = {
             'success': True,
             'generation_id': generation_id,
             'midi_file': f'/api/download/{generation_id}.mid',
             'emotion': emotion_name,
             'duration': duration,
-            'tokens_generated': len(tokens)
-        })
+            'tokens_generated': tokens_generated,
+            'demo_mode': use_demo
+        }
+        
+        # Add audio file if conversion succeeded
+        if audio_success:
+            response_data['audio_file'] = f'/api/download/{generation_id}.mp3'
+        
+        return jsonify(response_data)
     
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -187,15 +240,25 @@ def generate_by_emotion():
 
 @app.route('/api/download/<filename>', methods=['GET'])
 def download_file(filename):
-    """Download generated MIDI file"""
+    """Download generated MIDI or audio file"""
     try:
         file_path = OUTPUT_DIR / filename
         if not file_path.exists():
             return jsonify({'error': 'File not found'}), 404
         
+        # Determine mimetype based on extension
+        if filename.endswith('.mid'):
+            mimetype = 'audio/midi'
+        elif filename.endswith('.mp3'):
+            mimetype = 'audio/mpeg'
+        elif filename.endswith('.wav'):
+            mimetype = 'audio/wav'
+        else:
+            mimetype = 'application/octet-stream'
+        
         return send_file(
             file_path,
-            mimetype='audio/midi',
+            mimetype=mimetype,
             as_attachment=True,
             download_name=filename
         )
