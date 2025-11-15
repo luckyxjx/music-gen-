@@ -1,5 +1,5 @@
 """
-Training pipeline with checkpoint management
+Training pipeline with checkpoint management and RL evaluation
 """
 
 import torch
@@ -11,6 +11,7 @@ from typing import Optional, Dict
 from tqdm import tqdm
 
 from src.config import TrainingConfig
+from src.training.rl_evaluator import RLEvaluator
 
 
 class CheckpointManager:
@@ -121,7 +122,7 @@ class CheckpointManager:
 
 
 class Trainer:
-    """Training orchestration"""
+    """Training orchestration with RL evaluation support"""
     
     def __init__(
         self,
@@ -129,7 +130,8 @@ class Trainer:
         train_loader: DataLoader,
         val_loader: DataLoader,
         config: TrainingConfig,
-        device: str = 'cpu'
+        device: str = 'cpu',
+        enable_rl_eval: bool = False
     ):
         self.model = model.to(device)
         self.train_loader = train_loader
@@ -157,6 +159,9 @@ class Trainer:
             config.checkpoint_dir,
             config.keep_best_n
         )
+        
+        # RL Evaluator (optional)
+        self.rl_evaluator = RLEvaluator() if enable_rl_eval else None
         
         # Training state
         self.start_epoch = 0
@@ -290,3 +295,10 @@ class Trainer:
         
         print("\nTraining complete!")
         print(f"Best validation loss: {self.best_val_loss:.4f}")
+        
+        # Generate RL evaluation report if enabled
+        if self.rl_evaluator:
+            self.rl_evaluator.save_metrics()
+            self.rl_evaluator.plot_training_progress()
+            report = self.rl_evaluator.generate_report()
+            print("\n" + report)

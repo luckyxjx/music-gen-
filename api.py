@@ -16,6 +16,7 @@ from src.tokenizer import MIDITokenizer
 from src.generation.text_parser import parse_text_input
 from src.generation.audio_converter import AudioConverter
 from generate_music import MusicGenerator
+from src.training.human_feedback import HumanFeedbackCollector
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend
@@ -26,10 +27,14 @@ tokenizer = None
 generator = None
 device = None
 audio_converter = None
+feedback_collector = None
 
 # Output directory
 OUTPUT_DIR = Path("./generated_api")
 OUTPUT_DIR.mkdir(exist_ok=True)
+
+# Initialize feedback collector
+feedback_collector = HumanFeedbackCollector(feedback_dir="human_feedback")
 
 
 def initialize_model():
@@ -282,6 +287,126 @@ def get_emotions():
     })
 
 
+@app.route('/api/feedback/samples', methods=['GET'])
+def get_feedback_samples():
+    """Get samples for human feedback"""
+    try:
+        # Get recent generations from localStorage (in practice, from database)
+        # For now, return samples from generated_api directory
+        samples = []
+        
+        if OUTPUT_DIR.exists():
+            midi_files = list(OUTPUT_DIR.glob("*.mid"))
+            
+            for midi_file in midi_files[:20]:  # Limit to 20 samples
+                generation_id = midi_file.stem
+                
+                # Check if audio file exists
+                audio_file = OUTPUT_DIR / f"{generation_id}.mp3"
+                
+                # Try to extract metadata from filename or use defaults
+                sample = {
+                    'id': generation_id,
+                    'emotion': 'unknown',  # Would be stored in metadata
+                    'duration': 2.0,
+                    'midi_file': f'/api/download/{midi_file.name}',
+                    'audio_file': f'/api/download/{audio_file.name}' if audio_file.exists() else None,
+                    'timestamp': midi_file.stat().st_mtime
+                }
+                
+                # Check if feedback already exists
+                existing_feedback = feedback_collector.get_feedback_for_sample(generation_id)
+                if not existing_feedback:  # Only include samples without feedback
+                    samples.append(sample)
+        
+        return jsonify({
+            'success': True,
+            'samples': samples[:10]  # Return max 10 samples
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/feedback/submit', methods=['POST'])
+def submit_feedback():
+    """Submit human feedback for a sample"""
+    try:
+        data = request.json
+        
+        # Validate required fields
+        required_fields = ['generation_id', 'emotion', 'emotion_accuracy', 
+                          'musical_quality', 'overall_rating']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({
+                    'success': False,
+                    'error': f'Missing required field: {field}'
+                }), 400
+        
+        # Add feedback
+        feedback_entry = feedback_collector.add_feedback(
+            generation_id=data['generation_id'],
+            emotion=data['emotion'],
+            emotion_accuracy=data['emotion_accuracy'],
+            musical_quality=data['musical_quality'],
+            overall_rating=data['overall_rating'],
+            comments=data.get('comments', '')
+        )
+        
+        return jsonify({
+            'success': True,
+            'feedback': feedback_entry,
+            'message': 'Feedback submitted successfully'
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/feedback/stats', methods=['GET'])
+def get_feedback_stats():
+    """Get feedback statistics"""
+    try:
+        stats = feedback_collector.get_statistics()
+        
+        return jsonify({
+            'success': True,
+            'statistics': stats
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/feedback/export', methods=['GET'])
+def export_feedback():
+    """Export feedback for RL training"""
+    try:
+        training_data = feedback_collector.export_for_training()
+        
+        return jsonify({
+            'success': True,
+            'data': training_data,
+            'count': len(training_data['generation_ids'])
+        })
+    
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 if __name__ == '__main__':
     # Initialize model before starting server
     initialize_model()
@@ -296,6 +421,10 @@ if __name__ == '__main__':
     print("  GET  /api/download/<filename> - Download MIDI")
     print("  GET  /api/emotions - List emotions")
     print("  GET  /api/health - Health check")
+    print("  GET  /api/feedback/samples - Get samples for feedback")
+    print("  POST /api/feedback/submit - Submit human feedback")
+    print("  GET  /api/feedback/stats - Get feedback statistics")
+    print("  GET  /api/feedback/export - Export feedback for training")
     print("\nServer starting on http://localhost:5001")
     print("="*60 + "\n")
     
