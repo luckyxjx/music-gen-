@@ -164,21 +164,27 @@ class MIDITokenizer:
             
             elif token.startswith('NOTE_ON_'):
                 pitch = int(token.split('_')[-1])
-                active_notes[(current_inst, pitch)] = (current_time, current_velocity)
+                # Validate pitch is in MIDI range
+                if 0 <= pitch <= 127:
+                    active_notes[(current_inst, pitch)] = (current_time, current_velocity)
             
             elif token.startswith('NOTE_OFF_'):
                 pitch = int(token.split('_')[-1])
-                key = (current_inst, pitch)
-                if key in active_notes:
-                    start_time, velocity = active_notes[key]
-                    note = pretty_midi.Note(
-                        velocity=velocity,
-                        pitch=pitch,
-                        start=start_time,
-                        end=current_time
-                    )
-                    instruments[current_inst].notes.append(note)
-                    del active_notes[key]
+                # Validate pitch is in MIDI range
+                if 0 <= pitch <= 127:
+                    key = (current_inst, pitch)
+                    if key in active_notes:
+                        start_time, velocity = active_notes[key]
+                        # Validate velocity is in MIDI range
+                        velocity = max(1, min(127, velocity))
+                        note = pretty_midi.Note(
+                            velocity=velocity,
+                            pitch=pitch,
+                            start=start_time,
+                            end=current_time
+                        )
+                        instruments[current_inst].notes.append(note)
+                        del active_notes[key]
         
         # Add instruments to MIDI
         for inst in instruments.values():

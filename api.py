@@ -16,6 +16,7 @@ from src.tokenizer import MIDITokenizer
 from src.generation.text_parser import parse_text_input
 from src.generation.audio_converter import AudioConverter
 from generate_music import MusicGenerator
+from src.generation.improved_generator import ImprovedMusicGenerator
 from src.training.human_feedback import HumanFeedbackCollector
 
 app = Flask(__name__)
@@ -25,6 +26,7 @@ CORS(app)  # Enable CORS for frontend
 model = None
 tokenizer = None
 generator = None
+improved_generator = None
 device = None
 audio_converter = None
 feedback_collector = None
@@ -47,24 +49,54 @@ def initialize_model():
     tokenizer_config = TokenizerConfig()
     tokenizer = MIDITokenizer(tokenizer_config)
     
-    # Create model
+    # Create model with SAME architecture as training
     model_config = ModelConfig(
         model_type="transformer",
-        d_model=256,
-        n_layers=4,
-        n_heads=4,
+        d_model=512,
+        n_layers=6,
+        n_heads=8,
+        d_ff=2048,
+        dropout=0.1,
+        max_seq_len=512,
         use_emotion_conditioning=True,
-        use_duration_control=True
+        emotion_emb_dim=64,
+        num_emotions=6,
+        use_duration_control=True,
+        duration_emb_dim=32
     )
     
     model = create_model(model_config, tokenizer.vocab_size)
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
     
-    # Create generator
+    # Load trained checkpoint
+    checkpoint_path = "checkpoints/best_epoch_24_loss_1.8154.pt"
+    if Path(checkpoint_path).exists():
+        print(f"Loading trained checkpoint: {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        model.eval()
+        print(f"✓ Loaded checkpoint from epoch {checkpoint['epoch']}")
+        print(f"  Train Loss: {checkpoint['train_loss']:.4f}")
+        print(f"  Val Loss: {checkpoint['val_loss']:.4f}")
+    else:
+        print(f"⚠️  Checkpoint not found: {checkpoint_path}")
+        print("  Model will use random weights (untrained)")
+    
+    model = model.to(device)
+    
+    # Create generators (both standard and improved)
     generator = MusicGenerator(
         model=model,
         tokenizer=tokenizer,
         config=GenerationConfig(),
+        device=device
+    )
+    
+    # Create improved generator with constraints
+    global improved_generator
+    improved_generator = ImprovedMusicGenerator(
+        model=model,
+        tokenizer=tokenizer,
         device=device
     )
     
@@ -104,7 +136,7 @@ def generate_music():
         text = data.get('text', '')
         temperature = data.get('temperature', 1.0)
         top_k = data.get('top_k', 20)
-        use_demo = data.get('use_demo', True)  # Default to demo mode
+        use_demo = data.get('use_demo', False)  # Use trained model by default
         
         if not text:
             return jsonify({'error': 'Text input required'}), 400
@@ -125,18 +157,38 @@ def generate_music():
             create_demo_midi(parsed['emotion'], duration_seconds, str(midi_path))
             tokens_generated = 0  # Demo mode doesn't use tokens
         else:
-            # Generate music using model
-            tokens = generator.generate(
+            # Generate music using IMPROVED model with OPTIMAL constraints
+            tokens = improved_generator.generate_with_constraints(
                 emotion=parsed['emotion_index'],
                 duration_minutes=parsed['duration_minutes'],
-                temperature=temperature,
-                top_k=top_k,
-                max_tokens=512
+                temperature=0.75,  # OPTIMAL: Best structure
+                top_k=60,  # OPTIMAL: More variety
+                top_p=0.92,  # OPTIMAL: Nucleus sweet spot
+                max_tokens=3072,  # OPTIMAL: Full songs
+                min_notes=100,  # OPTIMAL: Substantial music
+                max_consecutive_time_shifts=3,  # OPTIMAL: Tight constraint
+                repetition_penalty=1.3  # OPTIMAL: Strong penalty
             )
             
             # Save MIDI
-            generator.save_midi(tokens, str(midi_path))
+            improved_generator.save_midi(tokens, str(midi_path))
             tokens_generated = len(tokens)
+            
+            # Check if generation was successful (has enough notes)
+            import pretty_midi
+            try:
+                midi_check = pretty_midi.PrettyMIDI(str(midi_path))
+                total_notes = sum(len(inst.notes) for inst in midi_check.instruments)
+                
+                if total_notes < 5:
+                    print(f"⚠️  Poor generation ({total_notes} notes), using demo mode as fallback")
+                    from create_demo_midi import create_demo_midi
+                    duration_seconds = parsed['duration_minutes'] * 60
+                    create_demo_midi(parsed['emotion'], duration_seconds, str(midi_path))
+                    use_demo = True  # Mark as demo for response
+            except Exception as e:
+                print(f"⚠️  Error checking MIDI quality: {e}")
+                # Continue anyway
         
         # Convert to MP3
         mp3_filename = f"{generation_id}.mp3"
@@ -183,7 +235,7 @@ def generate_by_emotion():
         duration = data.get('duration', 2.0)
         temperature = data.get('temperature', 1.0)
         top_k = data.get('top_k', 20)
-        use_demo = data.get('use_demo', True)  # Default to demo mode
+        use_demo = data.get('use_demo', False)  # Use trained model by default
         
         # Map emotion to index
         emotions_map = {

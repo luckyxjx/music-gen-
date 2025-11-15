@@ -1,0 +1,23 @@
+{
+  "total_feedback": 1,
+  "average_ratings": {
+    "emotion_accuracy": 4.0,
+    "musical_quality": 5.0,
+    "overall_rating": 4.0,
+    "count": 1
+  },
+  "human_model_agreement": {
+    "agreement_score": 0.8,
+    "std": 0.0,
+    "count": 1
+  },
+  "last_updated": "2025-11-15T12:47:05.321822",
+  "per_emotion": {
+    "joy": {
+      "emotion_accuracy": 4.0,
+      "musical_quality": 5.0,
+      "overall_rating": 4.0,
+      "count": 1
+    }
+  }
+}
