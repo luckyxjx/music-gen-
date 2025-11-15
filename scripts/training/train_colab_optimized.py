@@ -37,7 +37,7 @@ def main():
         print(f"  Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
     
     # Find checkpoint to resume from
-    checkpoint_dir = Path("./checkpoints")
+    checkpoint_dir = Path("../../checkpoints")
     checkpoint_path = None
     start_epoch = 0
     
@@ -54,7 +54,7 @@ def main():
     # OPTIMIZED DATA CONFIG FOR BEST QUALITY
     print("\n[1/6] Configuring dataset (BEST QUALITY)...")
     data_config = DataConfig(
-        dataset_path="./EMOPIA_1.0",
+        dataset_path="../../datasets/EMOPIA_1.0",
         balance_emotions=True,
         balancing_strategy="oversample",  # Oversample for balanced classes
         use_stratified_split=True,
@@ -142,11 +142,11 @@ def main():
         scheduler_type="cosine",
         warmup_epochs=10,  # Longer warmup
         # CHECKPOINTING
-        checkpoint_dir="./checkpoints",
+        checkpoint_dir="../../checkpoints",
         save_every_n_epochs=5,
         keep_best_n=10,  # Keep more checkpoints
         # LOGGING
-        log_dir="./logs",
+        log_dir="../../logs",
         use_wandb=False,
         log_every_n_steps=50,
         # VALIDATION

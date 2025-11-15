@@ -23,7 +23,7 @@ def main():
     print("="*60)
     
     # Find best checkpoint
-    checkpoint_dir = Path("./checkpoints")
+    checkpoint_dir = Path("../../checkpoints")
     checkpoints = list(checkpoint_dir.glob("best_epoch_*.pt"))
     
     if not checkpoints:

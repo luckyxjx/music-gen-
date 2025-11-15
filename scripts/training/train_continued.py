@@ -21,7 +21,7 @@ def main():
     print("="*60)
     
     # Find best checkpoint
-    checkpoint_dir = Path("./checkpoints")
+    checkpoint_dir = Path("../../checkpoints")
     checkpoints = list(checkpoint_dir.glob("best_epoch_*.pt"))
     
     if not checkpoints:
@@ -43,7 +43,7 @@ def main():
     # Configure dataset
     print("\n[1/6] Configuring dataset...")
     data_config = DataConfig(
-        dataset_path="./EMOPIA_1.0",
+        dataset_path="../../datasets/EMOPIA_1.0",
         balance_emotions=True,
         balancing_strategy="oversample",
         use_stratified_split=True,
@@ -108,10 +108,10 @@ def main():
         num_epochs=150,  # Train to epoch 150
         gradient_clip=1.0,
         use_lr_scheduler=True,
-        checkpoint_dir="./checkpoints",
+        checkpoint_dir="../../checkpoints",
         save_every_n_epochs=5,
         keep_best_n=5,  # Keep more checkpoints
-        log_dir="./logs",
+        log_dir="../../logs",
         validate_every_n_epochs=1
     )
     

@@ -206,3 +206,30 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Project-specific
+# Large datasets
+datasets/lakh-midi/
+datasets/lakh_midi/
+datasets/EMOPIA_1.0/
+
+# Model checkpoints (too large for git)
+checkpoints/*.pt
+checkpoints/*.json
+
+# Generated outputs
+output/
+generated/
+generated_api/
+generated_from_text/
+human_feedback/
+
+# Logs
+logs/
+logs_demo/
+
+# Assets
+assets/*.sf2
+
+# macOS
+.DS_Store
+

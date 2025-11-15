@@ -12,7 +12,7 @@ import zipfile
 
 def check_dataset():
     """Check if EMOPIA dataset exists"""
-    emopia_path = Path("./EMOPIA_1.0")
+    emopia_path = Path("../../datasets/EMOPIA_1.0")
     if emopia_path.exists():
         print("✓ EMOPIA dataset found!")
         return True
@@ -155,7 +155,7 @@ def main():
     print("   - Best quality emotion-labeled music")
     print("   - ~1000 MIDI files")
     print("   - Download from: https://zenodo.org/record/5090631")
-    print("   - Extract to ./EMOPIA_1.0/")
+    print("   - Extract to datasets/EMOPIA_1.0/")
     
     print("\n2. Use Your Own MIDI Files")
     print("   - Organize into emotion folders:")
